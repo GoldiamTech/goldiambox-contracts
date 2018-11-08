@@ -24,9 +24,15 @@ contract PrivateBox is Owned {
     uint private unqualifiedBalance;
     uint private unqualifiedBalanceTimestamp;
     
-    event Withdraw (address indexed _holder, address indexed _privateBox, uint256 value);
-    event Deposit (address indexed _holder, address indexed _privateBox, uint256 value);
-    // event Transfer (address indexed _holder, address indexed _privateBox, address indexed _to, uint256 value);
+    event Withdraw (address indexed _goldiambox, address indexed _holder, address indexed _privateBox, uint256 value);
+
+    event Deposit (
+        address indexed _goldiambox,
+        address indexed _from,
+        address indexed _privateBox,
+        address _holder,
+        uint256 value
+    );
 
     modifier onlyHolder() {
         require(msg.sender == holder);
@@ -67,7 +73,7 @@ contract PrivateBox is Owned {
         }
         unqualifiedBalanceTimestamp = now;
         unqualifiedBalance += msg.value;
-        emit Deposit(msg.sender, address(this), msg.value);
+        emit Deposit(address(goldiambox), msg.sender, address(this), address(holder), msg.value);
     }
 
     /*
@@ -82,7 +88,7 @@ contract PrivateBox is Owned {
         emit Transfer(msg.sender, address(this), address(recipient), amount);
     }
    */
-    function withrawFunds(uint amount) public onlyHolder {
+    function withdrawFunds(uint amount) public onlyHolder {
         require(address(this).balance >= amount);
         if (unqualifiedBalance < amount) {
             unqualifiedBalance = 0;
@@ -90,7 +96,7 @@ contract PrivateBox is Owned {
             unqualifiedBalance -= amount;
         }
         msg.sender.transfer(amount);
-        emit Withdraw(msg.sender, address(this), amount);
+        emit Withdraw(address(goldiambox), msg.sender, address(this), amount);
     }
 
 }
@@ -99,23 +105,24 @@ contract PrivateBox is Owned {
 
 contract GoldiamBox is Owned {
     
-    uint public qualificationPeriod = 20 seconds;
+    uint public qualificationPeriod = 24 hours;
     uint public roundDuration = 24 hours;
     address[] private registeredHolders;
     mapping(address => address) public privateBoxOf;
+    mapping(address => address) public holderOf;
 
-    event PrivateBoxCreation(address indexed _holder, address _privateBox);
-   
+    event PrivateBoxCreation(address indexed _goldiambox, address indexed _holder, address indexed _privateBox);
+
     function GoldiamBox() public {
     }
-    
+
     function() public {
     }
     
     function getHolderTotalBalance(address holder) external view returns (uint) {
         return PrivateBox(privateBoxOf[holder]).checkTotalBalance();
     }
-    
+
     function getHolderBalanceAllocation(address holder)
         external 
         view 
@@ -123,7 +130,7 @@ contract GoldiamBox is Owned {
     {
         return PrivateBox(privateBoxOf[holder]).checkBalanceAllocation();
     } 
-    
+
     function getPrivateBoxBalanceAllocation(address privateBox)
         external 
         view 
@@ -131,7 +138,7 @@ contract GoldiamBox is Owned {
     {
         return PrivateBox(privateBox).checkBalanceAllocation();
     }
-    
+
     function getTotalBalance() external view returns (uint totalQualified, uint totalUnqualified) {
         uint q;
         uint u;
@@ -141,13 +148,13 @@ contract GoldiamBox is Owned {
             totalUnqualified += u;
         }
     }
-    
+
     function getAllRegisteredHolders() external view returns (address[]) {
         return registeredHolders;
     }
-    
+
     /*
-    function aproximateRewardPerRound(address _holder) 
+    function aproximateRewardPerRound(address _holder)
         external 
         view 
         returns (uint _wei, uint _gol) 
@@ -163,21 +170,22 @@ contract GoldiamBox is Owned {
         _wei = (((rewardPerBlock * roundDuration) / blocktime) * share) / 1000000;
         _gol = _wei / 1000000000000000000;
     }
-    
+
     */
     function createPrivateBox() public {
         require(privateBoxOf[msg.sender] == address(0));
         PrivateBox box = new PrivateBox(this, msg.sender);
         privateBoxOf[msg.sender] = box;
+        holderOf[address(box)] = msg.sender;
         registeredHolders.push(msg.sender);
-        emit PrivateBoxCreation(msg.sender, address(box));
+        emit PrivateBoxCreation(address(this), msg.sender, address(box));
     }
-    
+
     function setQualificationPeriod(uint _qualificationPeriod) public onlyOwner {
         require(_qualificationPeriod >= 0);
         qualificationPeriod = _qualificationPeriod;
     }
-    
+
     function setRoundDuration(uint _roundDuration) public onlyOwner {
         require(_roundDuration >= 0);
         roundDuration = _roundDuration;

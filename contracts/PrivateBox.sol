@@ -9,9 +9,15 @@ contract PrivateBox is Owned {
     uint private unqualifiedBalance;
     uint private unqualifiedBalanceTimestamp;
     
-    event Withdraw (address indexed _holder, address indexed _privateBox, uint256 value);
-    event Deposit (address indexed _holder, address indexed _privateBox, uint256 value);
-    // event Transfer (address indexed _holder, address indexed _privateBox, address indexed _to, uint256 value);
+    event Withdraw (address indexed _goldiambox, address indexed _holder, address indexed _privateBox, uint256 value);
+
+    event Deposit (
+        address indexed _goldiambox,
+        address indexed _from,
+        address indexed _privateBox,
+        address _holder,
+        uint256 value
+    );
 
     modifier onlyHolder() {
         require(msg.sender == holder);
@@ -52,7 +58,7 @@ contract PrivateBox is Owned {
         }
         unqualifiedBalanceTimestamp = now;
         unqualifiedBalance += msg.value;
-        emit Deposit(msg.sender, address(this), msg.value);
+        emit Deposit(address(goldiambox), msg.sender, address(this), address(holder), msg.value);
     }
 
     /*
@@ -75,7 +81,7 @@ contract PrivateBox is Owned {
             unqualifiedBalance -= amount;
         }
         msg.sender.transfer(amount);
-        emit Withdraw(msg.sender, address(this), amount);
+        emit Withdraw(address(goldiambox), msg.sender, address(this), amount);
     }
 
 }
